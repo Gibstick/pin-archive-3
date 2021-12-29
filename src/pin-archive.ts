@@ -208,8 +208,8 @@ const archiveMessage = async (message: Message, db: DB) => {
   }
   const guildId = message.guildId;
 
-  const result = await db.get<{ archive_channel_id: string }>(
-    "SELECT archive_channel_id FROM config WHERE guild_id = ?",
+  const result = await db.get<{ archive_channel_id: string; react_trigger: string }>(
+    "SELECT archive_channel_id, react_trigger FROM config WHERE guild_id = ?",
     guildId,
   );
   if (result === undefined) {
@@ -242,6 +242,10 @@ const archiveMessage = async (message: Message, db: DB) => {
     log.error("Error sending to archive channel: %s", error);
     return;
   }
+
+  // Add a reaction of our own to prevent re-pinning.
+  await message.react(result.react_trigger);
+
   log.info("Archived message %s in guild %s", message.id, guildId);
 };
 
