@@ -1,9 +1,8 @@
 /**
  * Basic bot client setup.
  */
-import { Client, Collection, Intents } from "discord.js";
 import bunyan from "bunyan";
-import { env } from "./env";
+import { Client, Collection, Intents } from "discord.js";
 
 const CreateBot = (): Client => {
   const log = bunyan.createLogger({ name: "create-bot" });
