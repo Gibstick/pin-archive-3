@@ -1,0 +1,8 @@
+.env
+node_modules
+dist/
+.vscode
+src/**/*.js
+*.sqlite3
+**/.DS_STORE
+*.log
