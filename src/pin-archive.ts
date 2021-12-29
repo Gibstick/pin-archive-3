@@ -111,7 +111,26 @@ const setReactCountCommand = async (interaction: CommandInteraction, db: DB) => 
   if (!interaction.inGuild()) {
     return;
   }
+
   const guildId = interaction.guildId;
+  const guild = await interaction.guild!.fetch();
+  const channel = await (await guild.channels.fetch(interaction.channelId))?.fetch();
+
+  if (channel === undefined) {
+    log.error({ guildId: guildId }, "unable to fetch interaction's channel for id %s", interaction.channelId);
+    return await interaction.reply({
+      content: `❗ Unable to set reaction count`,
+      ephemeral: true,
+    });
+  }
+
+  if (!channel.permissionsFor(interaction.user.id, true)?.has(Permissions.FLAGS.MANAGE_MESSAGES)) {
+    return await interaction.reply({
+      content: "❗ You must have manage messages permission.",
+      ephemeral: true,
+    });
+  }
+
   const reactCount = interaction.options.getInteger(OPTION_REACT_COUNT, true);
 
   const result = db.run(
