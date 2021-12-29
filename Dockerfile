@@ -1,7 +1,13 @@
 # syntax=docker/dockerfile:1.3
 
 FROM node:16-alpine AS build
+
 RUN npm install -g pnpm
+RUN apk upgrade --no-cache && apk add --no-cache dumb-init \
+    sqlite \
+    python3 \
+    make \
+    g++
 
 WORKDIR /build
 
@@ -17,9 +23,13 @@ COPY src ./src/
 RUN pnpm run build
 
 FROM node:16-alpine AS runner
-RUN npm install -g pnpm
 
-RUN apk upgrade --no-cache && apk add --no-cache dumb-init sqlite
+RUN npm install -g pnpm
+RUN apk upgrade --no-cache && apk add --no-cache dumb-init \
+    sqlite \
+    python3 \
+    make \
+    g++
 
 WORKDIR /app
 
