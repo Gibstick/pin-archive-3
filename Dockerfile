@@ -6,6 +6,7 @@ RUN npm install -g pnpm
 RUN apk upgrade --no-cache && apk add --no-cache dumb-init \
     sqlite \
     python3 \
+    python2 \
     make \
     g++
 
@@ -28,6 +29,7 @@ RUN npm install -g pnpm
 RUN apk upgrade --no-cache && apk add --no-cache dumb-init \
     sqlite \
     python3 \
+    python2 \
     make \
     g++
 
