@@ -42,6 +42,11 @@ COPY --from=build /build/dist ./dist
 COPY migrations ./migrations/
 
 EXPOSE 3000
+RUN mkdir /app/db && chown node:node /app/db
 USER node
 ENV NODE_ENV=production
+
+VOLUME /app/db
+ENV PIN_ARCHIVE_DB=/app/db/pin-archive-3.sqlite3
+
 CMD ["dumb-init", "node", "./dist/main.js"]
