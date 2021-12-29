@@ -51,12 +51,12 @@ const getReactCountCommand = async (interaction: CommandInteraction, db: DB) => 
   try {
     count = await getReactCount(db, guildId);
   } catch (error) {
-    log.error("unable to get reaction count for guild %s", guildId);
+    log.error({ err: error, guildId: guildId }, "unable to get reaction count");
     interaction.reply({ content: "❗ Failed to fetch reaction count", ephemeral: true });
   }
 
   if (count === undefined) {
-    log.info("getreactcount used while uninitialized in %s", guildId);
+    log.info({ guildId: guildId }, "getreactcount used while uninitialized");
     return interaction.reply({ content: "❗ Bot is not initialized. Please use /init.", ephemeral: true });
   }
   return await interaction.reply({ content: `ℹ️ Reaction count is ${count}` });
@@ -94,14 +94,14 @@ const initCommand = async (interaction: CommandInteraction, db: DB) => {
   try {
     await update;
   } catch (error) {
-    log.error(error);
+    log.error({ err: error }, "failed to upsert config entry");
     return await interaction.reply({
       content: `❗ Unable to initialize. Please contact bot author.`,
       ephemeral: true,
     });
   }
 
-  log.info("Initialized in guild %s to %s", guild.id, pinChannel.id);
+  log.info({ guildId: guild.id }, "initialized to channel %s", pinChannel.id);
   return await interaction.reply(
     `✅ Initialized pin archive channel to <#${pinChannel.id}>. Don't forget to set permissions on the channel for the bot.`,
   );
@@ -128,12 +128,12 @@ const setReactCountCommand = async (interaction: CommandInteraction, db: DB) => 
   try {
     rowsModified = (await result).changes ?? 0;
   } catch (error) {
-    log.error("unable to get reaction count for guild %s", guildId);
+    log.error({ err: error, guildId: guildId }, "unable to get reaction count");
     return interaction.reply({ content: "❗ Failed to fetch reaction count", ephemeral: true });
   }
 
   if (rowsModified === 0) {
-    log.info("setreactcount used while uninitialized in %s", guildId);
+    log.info({ guildId: guildId }, "setreactcount used while uninitialized");
     return interaction.reply({ content: "❗ Bot is not initialized. Please use /init.", ephemeral: true });
   }
 
@@ -144,7 +144,7 @@ const formatEmbeds = (message: Message) => {
   assert(!message.partial);
   const channel = message.guild?.channels.cache.get(message.channelId);
   if (channel === undefined) {
-    log.error("Unable to get channel with id %s in guild %s", message.channelId, message.guildId);
+    log.error({ guildId: message.guildId }, "unable to get channel with id %s", message.channelId);
     return;
   }
 
@@ -223,12 +223,16 @@ const archiveMessage = async (message: Message, db: DB) => {
 
   const archiveChannel = await message.guild.channels.fetch(result.archive_channel_id);
   if (archiveChannel === null) {
-    log.error("Unable to fetch archive channel %s for guild %s", result.archive_channel_id, guildId);
+    log.error({ guildId: guildId }, "unable to fetch archive channel %s", result.archive_channel_id);
     return;
   }
 
   if (!archiveChannel.isText) {
-    log.error("Archive channel initialized to non-text channel somehow in guild %s", guildId);
+    log.error(
+      { guildId: guildId },
+      "archive channel %s initialized to non-text channel somehow?? ",
+      archiveChannel.id,
+    );
     return;
   }
 
@@ -239,14 +243,14 @@ const archiveMessage = async (message: Message, db: DB) => {
       embeds: embeds,
     });
   } catch (error) {
-    log.error("Error sending to archive channel: %s", error);
+    log.error({ err: error, guildId: guildId }, "error sending to archive channel");
     return;
   }
 
   // Add a reaction of our own to prevent re-pinning.
   await message.react(result.react_trigger);
 
-  log.info("Archived message %s in guild %s", message.id, guildId);
+  log.info("archived message %s in guild %s", message.id, guildId);
 };
 
 const maybeUnpin = async (message: Message) => {
@@ -259,7 +263,7 @@ const maybeUnpin = async (message: Message) => {
 };
 
 const safePin = async (message: Message) => {
-  log.info("Pinning message %s in guild", message.id, message.guildId);
+  log.info({ guildId: message.guildId }, "pinning message %s", message.id);
   if (!message.pinnable) {
     return;
   }
@@ -335,7 +339,11 @@ export const registerEvents = (client: Client, db: DB) => {
       try {
         reaction = await partialReaction.fetch();
       } catch (error) {
-        log.error("Something went wrong when fetching message id %s: %s", partialReaction.message.id, error);
+        log.error(
+          { err: error, guildId: guildId },
+          "something went wrong when fetching message %s",
+          partialReaction.message.id,
+        );
         return;
       }
     } else {
@@ -347,13 +355,13 @@ export const registerEvents = (client: Client, db: DB) => {
     // https://discordjs.guide/popular-topics/reactions.html#listening-for-reactions-on-old-messages
     const message = reaction.message;
     if (message.partial) {
-      log.warn("Partial message %s found despite fetching reaction", message.id);
+      log.warn({ guildId: guildId }, "partial message %s found despite fetching reaction", message.id);
       return;
     }
 
     try {
       const trigger = await getReactTrigger(db, guildId);
-      log.debug("Trigger is %s, name is %s", trigger, reaction.emoji.name);
+      log.debug("trigger is %s, name is %s", trigger, reaction.emoji.name);
       if (reaction.emoji.name !== trigger) {
         return;
       }
@@ -364,7 +372,7 @@ export const registerEvents = (client: Client, db: DB) => {
         return;
       }
     } catch (error) {
-      log.error("Error handling messageReactionAdd event: %s", error);
+      log.error({ err: error, guildId: guildId }, "error handling messageReactionAdd event: %s");
     }
 
     await safePin(message);

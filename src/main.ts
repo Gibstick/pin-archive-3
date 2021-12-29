@@ -13,8 +13,11 @@ import * as PinArchive from "./pin-archive";
   const log = bunyan.createLogger({ name: "main" });
 
   const bot = CreateBot();
+
+  const filename = env("PIN_ARCHIVE_DB");
+  log.info("using database file %s", filename);
   const db = await open({
-    filename: env("PIN_ARCHIVE_DB"),
+    filename: filename,
     driver: sqlite3.cached.Database,
   });
 

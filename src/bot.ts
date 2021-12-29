@@ -23,7 +23,7 @@ const CreateBot = (): Client => {
       const command = client.commands.get(interaction.commandName);
       command?.execute(interaction);
     } catch (error) {
-      log.error({ err: error, msg: "Error excecuting command", command: interaction.commandName });
+      log.error({ err: error, msg: "error excecuting command", command: interaction.commandName });
       await interaction.reply({
         content: "There was an error while executing this command!",
         ephemeral: true,
@@ -33,11 +33,11 @@ const CreateBot = (): Client => {
 
   // TODO: smarter deploy
   client.once("ready", async (message) => {
-    log.info("Ready!");
+    log.info("ready!");
     for (const guild of client.guilds.cache.values()) {
       for (const command of client.commands.values()) {
         await guild.commands.create(command);
-        log.info("Command created: %s", command.name);
+        log.info({ guildId: guild.id }, "command created: %s", command.name);
       }
     }
   });
