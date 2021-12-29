@@ -75,9 +75,13 @@ const initCommand = async (interaction: CommandInteraction, db: DB) => {
     });
   }
 
-  if (!pinChannel.permissionsFor(interaction.user.id)?.has(Permissions.FLAGS.SEND_MESSAGES)) {
+  const permissions = pinChannel.permissionsFor(interaction.user.id);
+  if (
+    !permissions?.has(Permissions.FLAGS.SEND_MESSAGES) ||
+    !permissions?.has(Permissions.FLAGS.MANAGE_MESSAGES)
+  ) {
     return await interaction.reply({
-      content: "❗ You must have send permissions in the archive channel.",
+      content: "❗ You must have send and manage messages permissions in the archive channel.",
       ephemeral: true,
     });
   }
