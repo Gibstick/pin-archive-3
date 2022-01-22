@@ -349,8 +349,37 @@ export const registerCommands = (client: Client, db: DB) => {
   }
 };
 
+// Handle a full (non-partial) message reaction event
+const handleMessageReactionAdd = async (
+  reaction: MessageReaction,
+  message: Message,
+  guildId: string,
+  db: DB,
+) => {
+  try {
+    const trigger = await getReactTrigger(db, guildId);
+    log.debug("trigger is %s, name is %s", trigger, reaction.emoji.name);
+    if (reaction.emoji.name !== trigger) {
+      return;
+    }
+
+    const reactionTriggerCount = (await getReactCount(db, guildId)) ?? NaN;
+    log.debug("reactCount is %d, actual count is %d", reactionTriggerCount, reaction.count);
+    if (reaction.count < reactionTriggerCount) {
+      return;
+    }
+  } catch (error) {
+    log.error({ err: error, guildId: guildId }, "error handling messageReactionAdd event: %s");
+  }
+
+  await safePin(message);
+  // The other handler will do the archiving. Otherwise, we will get
+  // duplicated pin archive messages.
+};
+
 export const registerEvents = (client: Client, db: DB) => {
   client.on("messageReactionAdd", async (partialReaction, _user) => {
+    // Fetch all of the non-partial objects and pass it to the real handler.
     const guildId = partialReaction.message.guildId;
     if (guildId === null) {
       return;
@@ -358,13 +387,14 @@ export const registerEvents = (client: Client, db: DB) => {
 
     let reaction: MessageReaction;
     if (partialReaction.partial) {
-      // TOCTTOU: the message could be deleted by the time we fetch it.
+      // TOCTTOU: the message and/or reaction could be deleted by the time we
+      // fetch it.
       try {
         reaction = await partialReaction.fetch();
       } catch (error) {
         log.error(
           { err: error, guildId: guildId },
-          "something went wrong when fetching message %s",
+          "something went wrong when fetching reaction for message %s",
           partialReaction.message.id,
         );
         return;
@@ -373,37 +403,33 @@ export const registerEvents = (client: Client, db: DB) => {
       reaction = partialReaction;
     }
 
-    // According to the guide, the message is now fully available. Unfortunately
-    // the type system doesn't know about that.
-    // https://discordjs.guide/popular-topics/reactions.html#listening-for-reactions-on-old-messages
-    const message = reaction.message;
-    if (message.partial) {
-      log.warn({ guildId: guildId }, "partial message %s found despite fetching reaction", message.id);
-      return;
-    }
-
-    try {
-      const trigger = await getReactTrigger(db, guildId);
-      log.debug("trigger is %s, name is %s", trigger, reaction.emoji.name);
-      if (reaction.emoji.name !== trigger) {
+    let message: Message;
+    if (reaction.message.partial) {
+      // TOCTTOU: the message could be deleted by the time we fetch it.
+      try {
+        message = await reaction.message.fetch();
+      } catch (error) {
+        log.error(
+          { err: error, guildId: guildId },
+          "something went wrong when fetching message %s",
+          reaction.message.id,
+        );
         return;
       }
-
-      const reactionTriggerCount = (await getReactCount(db, guildId)) ?? NaN;
-      log.debug("reactCount is %d, actual count is %d", reactionTriggerCount, reaction.count);
-      if (reaction.count < reactionTriggerCount) {
-        return;
-      }
-    } catch (error) {
-      log.error({ err: error, guildId: guildId }, "error handling messageReactionAdd event: %s");
+    } else {
+      message = reaction.message;
     }
 
-    await safePin(message);
-    // The other handler will do the archiving. Otherwise, we will get
-    // duplicated pin archive messages.
+    await handleMessageReactionAdd(reaction, message, guildId, db);
   });
 
   client.on("messageCreate", async (message) => {
+    // We might get partial messages here. However, since we only care about the
+    // pins system message, it should be safe to ignore partials.
+    if (message.partial) {
+      log.warn("Got partial message %s", message.id);
+      return;
+    }
     if (!message.inGuild()) {
       return;
     }
