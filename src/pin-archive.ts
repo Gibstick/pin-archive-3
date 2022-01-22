@@ -175,8 +175,8 @@ const formatEmbeds = (message: Message) => {
 
   const mainEmbed = new MessageEmbed()
     .setAuthor({
-      name: `${message.member!.displayName}#${message.author.discriminator}`,
-      iconURL: message.member!.displayAvatarURL(),
+      name: `${message.author.username}#${message.author.discriminator}`,
+      iconURL: message.author.displayAvatarURL(),
       url: message.url,
     })
     .setURL(message.url)
