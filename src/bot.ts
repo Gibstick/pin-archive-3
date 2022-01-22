@@ -31,7 +31,7 @@ const CreateBot = (): Client => {
   });
 
   // TODO: smarter deploy
-  client.once("ready", async (message) => {
+  client.once("ready", async () => {
     log.info("ready!");
     for (const guild of client.guilds.cache.values()) {
       for (const command of client.commands.values()) {
