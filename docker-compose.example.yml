@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  pin-archive:
+    image: pin-archive-3
+
+    volumes:
+      - db-data:/app/db
+
+    environment:
+      # PIN_ARCHIVE_DB: "/app/db/pin-archive-3.sqlite3"
+      PIN_ARCHIVE_BOT_TOKEN: "REPLACEME"
+
+volumes:
+  db-data:
